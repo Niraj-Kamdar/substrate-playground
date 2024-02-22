@@ -6,6 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use frame_system::EnsureRoot;
 use pallet_grandpa::AuthorityId as GrandpaId;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -107,7 +108,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	//   `spec_version`, and `authoring_version` are the same between Wasm and native.
 	// This value is set to 100 to notify Polkadot-JS App (https://polkadot.js.org/apps) to use
 	//   the compatible custom types.
-	spec_version: 101,
+	spec_version: 102,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -140,6 +141,9 @@ pub fn native_version() -> NativeVersion {
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 parameter_types! {
+	pub const MaxWellKnownNodes: u32 = 8;
+	pub const MaxPeerIdLength: u32 = 128;
+
 	pub const BlockHashCount: BlockNumber = 2400;
 	pub const Version: RuntimeVersion = VERSION;
 	/// We allow for 2 seconds of compute with a 6 second average block time.
@@ -160,6 +164,18 @@ impl pallet_utility::Config for Runtime {
   type RuntimeCall = RuntimeCall;
   type PalletsOrigin = OriginCaller;
   type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
+// Implement Config for pallet_node_authorization
+impl pallet_node_authorization::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxWellKnownNodes = MaxWellKnownNodes;
+	type MaxPeerIdLength = MaxPeerIdLength;
+	type AddOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = ();
 }
 
 // Configure FRAME pallets to include in runtime.
@@ -299,6 +315,7 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
 		Utility: pallet_utility,
+		NodeAuthorization: pallet_node_authorization::{Pallet, Call, Storage, Event<T>, Config<T>}
 	}
 );
 
